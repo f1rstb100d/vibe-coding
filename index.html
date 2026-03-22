@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello VibeCoding!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            position: relative;
+            text-align: center;
+            z-index: 10;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .title {
+            font-size: 5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 0, 110, 0.5);
+            animation: gradient 3s ease infinite, float 3s ease-in-out infinite;
+            margin-bottom: 50px;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .button {
+            display: inline-block;
+            padding: 20px 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(45deg, #ff006e, #8338ec);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(131, 56, 236, 0.5);
+        }
+
+        .button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(131, 56, 236, 0.7);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .button:hover::before {
+            left: 100%;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.5);
+        }
+
+        .glow-circle {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(131, 56, 236, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .wave {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to top, rgba(131, 56, 236, 0.3), transparent);
+            animation: wave 3s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ff006e;
+            animation: confetti-fall 3s linear infinite;
+        }
+
+        @keyframes confetti-fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 3rem;
+            }
+            .button {
+                padding: 15px 30px;
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    <div class="glow-circle" id="glowCircle"></div>
+    <div class="wave"></div>
+
+    <div class="container">
+        <h1 class="title">Hello VibeCoding!</h1>
+        <button class="button" id="vibeButton">Start VibeCoding</button>
+    </div>
+
+    <script>
+        // 创建粒子效果
+        const particlesContainer = document.getElementById('particles');
+        const particleCount = 100;
+
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            const size = Math.random() * 3 + 1;
+            const speedX = (Math.random() - 0.5) * 2;
+            const speedY = (Math.random() - 0.5) * 2;
+
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
+            particle.style.opacity = Math.random() * 0.5 + 0.5;
+
+            particlesContainer.appendChild(particle);
+
+            // 粒子动画
+            setInterval(() => {
+                let newX = parseFloat(particle.style.left) + speedX;
+                let newY = parseFloat(particle.style.top) + speedY;
+
+                if (newX > window.innerWidth || newX < 0) speedX *= -1;
+                if (newY > window.innerHeight || newY < 0) speedY *= -1;
+
+                particle.style.left = newX + 'px';
+                particle.style.top = newY + 'px';
+            }, 50);
+        }
+
+        // 鼠标跟随光晕
+        const glowCircle = document.getElementById('glowCircle');
+        document.addEventListener('mousemove', (e) => {
+            glowCircle.style.left = (e.clientX - 250) + 'px';
+            glowCircle.style.top = (e.clientY - 250) + 'px';
+        });
+
+        // 按钮交互
+        const button = document.getElementById('vibeButton');
+        button.addEventListener('click', () => {
+            createConfetti();
+            button.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+            }, 100);
+        });
+
+        // 创建彩纸效果
+        function createConfetti() {
+            const colors = ['#ff006e', '#8338ec', '#3a86ff', '#06ffa5', '#ffbe0b'];
+
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * window.innerWidth + 'px';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+
+                document.body.appendChild(confetti);
+
+                setTimeout(() => {
+                    confetti.remove();
+                }, 4000);
+            }
+        }
+
+        // 添加键盘交互
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+                createConfetti();
+            }
+        });
+    </script>
+</body>
+</html>
