@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>😂 表情包生成器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+    min-height: 100vh;
+    padding: 30px 20px;
+}
+.container { max-width: 640px; margin: 0 auto; }
+.header { text-align: center; margin-bottom: 28px; }
+.header h1 { font-size: 28px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.2); }
+.header p { color: rgba(255,255,255,.75); margin-top: 6px; font-size: 14px; }
+.input-area { display: flex; gap: 10px; margin-bottom: 20px; }
+#msgInput {
+    flex: 1;
+    padding: 14px 18px;
+    border: none;
+    border-radius: 14px;
+    background: rgba(255,255,255,.95);
+    color: #333;
+    font-size: 15px;
+    outline: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,.15);
+    transition: box-shadow .2s;
+}
+#msgInput:focus { box-shadow: 0 4px 25px rgba(0,0,0,.25); }
+#sendBtn {
+    padding: 14px 32px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(245,87,108,.4);
+    transition: transform .15s, box-shadow .15s;
+}
+#sendBtn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245,87,108,.5); }
+#sendBtn:active { transform: translateY(0); }
+#sendBtn:disabled { background: #bbb; cursor: not-allowed; box-shadow: none; transform: none; }
+
+.output-wrap {
+    background: rgba(255,255,255,.95);
+    border-radius: 16px;
+    padding: 24px;
+    min-height: 200px;
+    max-height: 600px;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,.12);
+}
+.output-wrap .placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 160px;
+    color: #aaa;
+    font-size: 15px;
+}
+.output-wrap img {
+    max-width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.1);
+    animation: fadeIn .4s ease-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.status { margin-top: 12px; font-size: 13px; text-align: center; min-height: 20px; }
+.status.ok { color: #4caf50; }
+.status.err { color: #f44336; }
+.status.processing { color: #ff9800; }
+
+.raw-toggle {
+    display: block;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 13px;
+    cursor: pointer;
+    color: rgba(255,255,255,.7);
+    text-decoration: underline;
+}
+.raw-area {
+    display: none;
+    margin-top: 10px;
+    background: rgba(0,0,0,.3);
+    border-radius: 12px;
+    padding: 14px;
+    max-height: 250px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: rgba(255,255,255,.7);
+}
+.raw-area.show { display: block; }
+
+.loading-bar {
+    margin-top: 16px;
+    height: 4px;
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+}
+.loading-bar.show { display: block; }
+.loading-bar::after {
+    content: "";
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, #fff, transparent);
+    animation: slide 1.2s ease-in-out infinite;
+}
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>😂 表情包生成器</h1>
+<p>输入文字描述，AI 为你生成专属表情包</p>
+</div>
+
+<div class="input-area">
+<input type="text" id="msgInput" placeholder="输入你想生成的表情包内容..." value="2024年10月1日是星期几">
+<button id="sendBtn" onclick="sendMsg()">🎨 生成</button>
+</div>
+
+<div class="output-wrap" id="outputWrap">
+<div class="placeholder">👆 输入内容后点击「生成」按钮</div>
+</div>
+
+<div class="loading-bar" id="loadingBar"></div>
+<div id="status" class="status"></div>
+<span class="raw-toggle" onclick="toggleRaw()">📋 查看原始返回</span>
+<div id="rawArea" class="raw-area"></div>
+</div>
+
+<script>
+const API_URL = "https://api.coze.cn/v3/chat";
+const TOKEN = "pat_86wkxxxxxxxxx";
+const BOT_ID = "7624409744719249408";
+
+const outputWrap = document.getElementById("outputWrap");
+const statusEl = document.getElementById("status");
+const sendBtn = document.getElementById("sendBtn");
+const msgInput = document.getElementById("msgInput");
+const rawArea = document.getElementById("rawArea");
+const loadingBar = document.getElementById("loadingBar");
+
+let buffer = "";
+let fullRaw = "";
+
+function setStatus(text, type) {
+    statusEl.textContent = text;
+    statusEl.className = "status " + (type || "");
+}
+
+function toggleRaw() {
+    rawArea.classList.toggle("show");
+}
+
+function isUrl(str) {
+    try { new URL(str.trim()); return true; } catch { return false; }
+}
+
+function renderOutput(text) {
+    if (!text) {
+        outputWrap.innerHTML = '<div class="placeholder">👆 输入内容后点击「生成」按钮</div>';
+        return;
+    }
+    const lines = text.split("\n").filter(l => l.trim());
+    let html = "";
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (isUrl(trimmed)) {
+            html += `<a href="${trimmed}" target="_blank"><img src="${trimmed}" alt="表情包" loading="lazy"></a>`;
+        } else {
+            html += `<p style="margin-bottom:8px;color:#555;font-size:14px;">${escapeHtml(trimmed)}</p>`;
+        }
+    }
+    outputWrap.innerHTML = html || '<div class="placeholder">暂无输出内容</div>';
+}
+
+function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function parseSSE(text) {
+    const events = [];
+    const blocks = text.split("\n\n");
+    for (const block of blocks) {
+        const lines = block.split("\n");
+        let eventType = "";
+        let dataStr = "";
+        for (const line of lines) {
+            if (line.startsWith("event:")) {
+                eventType = line.substring(6).trim();
+            } else if (line.startsWith("data:")) {
+                dataStr += (dataStr ? "\n" : "") + line.substring(5).trim();
+            }
+        }
+        if (eventType && dataStr) {
+            try {
+                events.push({ event: eventType, data: JSON.parse(dataStr) });
+            } catch (e) {}
+        }
+    }
+    return events;
+}
+
+async function sendMsg() {
+    const content = msgInput.value.trim();
+    if (!content) return;
+
+    let answerText = "";
+    fullRaw = "";
+    buffer = "";
+    rawArea.textContent = "";
+    rawArea.classList.remove("show");
+    renderOutput("");
+    setStatus("正在连接...", "processing");
+    sendBtn.disabled = true;
+    loadingBar.classList.add("show");
+
+    const payload = JSON.stringify({
+        bot_id: BOT_ID,
+        user_id: "123456789",
+        stream: true,
+        auto_save_history: true,
+        additional_messages: [{
+            role: "user",
+            content: content,
+            content_type: "text"
+        }]
+    });
+
+    try {
+        const resp = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${TOKEN}`,
+                "Content-Type": "application/json"
+            },
+            body: payload
+        });
+
+        if (!resp.ok) {
+            const errText = await resp.text();
+            throw new Error(`HTTP ${resp.status}: ${errText}`);
+        }
+
+        setStatus("🎨 AI 正在创作中...", "ok");
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            fullRaw += chunk;
+            buffer += chunk;
+
+            rawArea.textContent = fullRaw;
+
+            const events = parseSSE(buffer);
+            for (const ev of events) {
+                if (ev.event === "conversation.message.delta") {
+                    const d = ev.data;
+                    if (d.type === "answer" && d.content) {
+                        answerText += d.content;
+                        renderOutput(answerText);
+                    }
+                }
+            }
+
+            const lastCompleteIdx = buffer.lastIndexOf("\n\n");
+            if (lastCompleteIdx >= 0) {
+                buffer = buffer.substring(lastCompleteIdx + 2);
+            }
+        }
+
+        if (buffer.trim()) {
+            const events = parseSSE(buffer + "\n\n");
+            for (const ev of events) {
+                if (ev.event === "conversation.message.delta") {
+                    const d = ev.data;
+                    if (d.type === "answer" && d.content) {
+                        answerText += d.content;
+                        renderOutput(answerText);
+                    }
+                }
+            }
+        }
+
+        setStatus("✅ 生成完成！", "ok");
+    } catch (e) {
+        setStatus("❌ 错误: " + e.message, "err");
+        outputWrap.innerHTML = `<div class="placeholder" style="color:#f44336;">⚠️ ${escapeHtml(e.message)}</div>`;
+    } finally {
+        sendBtn.disabled = false;
+        loadingBar.classList.remove("show");
+    }
+}
+
+msgInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") sendMsg();
+});
+</script>
+</body>
+</html>
